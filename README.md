@@ -1,6 +1,9 @@
 # Cafiine-410-551
 A Cafiine version that allows you to choose your IP on the page, rather than compile it. Works from 4.1.0 to 5.5.1.
 
+# What is this?
+Cafiine is almost like RiiFS from the Wii. It's able to transfer files from a computer and bring them over to the WiiU and apply them over current files. So really, it's an application that allows game mods to happen.
+
 # How to set up
 First, you want to download this repo. You can either clone it, or download it as a ZIP. If you just want to run it and not compile, go into the installer/bin folder and choose the codeXXX.bin, where XXX is your firmware version. To check this, go into your WiiU's system settings. It should be on the top left corner.
 
@@ -16,3 +19,8 @@ You want to input your IPv4 into the program. For windows users, simply go into 
 Move the arrows around with the D-Pad, and use the Up/Down D-pad buttons to set the 4 numbers to your IP.
 
 Have fun!
+
+# Credits
+Original program -- Chadderz
+Port to 5.5.1 -- MrRean
+IP changing support -- No idea. Please let me know if you know who made this!
