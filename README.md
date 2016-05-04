@@ -22,5 +22,9 @@ Have fun!
 
 # Credits
 Original program -- Chadderz
+
 Port to 5.5.1 -- MrRean
+
 IP changing support -- No idea. Please let me know if you know who made this!
+
+Readme nagger -- neobrain <3
