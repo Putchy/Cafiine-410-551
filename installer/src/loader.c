@@ -207,103 +207,143 @@ void _start() {
         // Set server ip with buttons
         uint8_t sel_ip = 3;
         int error;
+		VPADData vpad_data;
         uint8_t button_pressed = 1;
-        VPADData vpad_data;
-        VPADRead(0, &vpad_data, 1, &error); //Read initial vpad status
-        while (1)
-        {
-            // Refresh screen if needed
-            if (button_pressed) { OSScreenFlipBuffersEx(1); OSScreenClearBufferEx(1, 0); }
+		int update_screen = 1; // same
+		int delay = 0; // hopefully this works, from DDD. This method can help with holding the buttons
+		uint32_t pressOrHold = 0;
+		
+		while (1)
+		{
+			VPADRead(0, &vpad_data, 1, &error); //Read initial vpad status
+		
+			if (update_screen)
+			{
+				OSScreenFlipBuffersEx(0);
+				OSScreenFlipBuffersEx(1);
+				OSScreenClearBufferEx(0, 0);
+				OSScreenClearBufferEx(1, 0);
+				
+				// Print message
+				PRINT_TEXT1(24, 1, "-- CAFIINE --");
+				PRINT_TEXT2(0, 5, "%s : %3d.%3d.%3d.%3d", "1. Server IP", ip.digit[0], ip.digit[1], ip.digit[2], ip.digit[3]);
+				PRINT_TEXT1(0, 6, "2. Press A to install cafiine");
+				PRINT_TEXT1(42, 17, "home button to exit ...");
+				
+				// Print ip digit selector
+				uint8_t x_shift = 15 + 4 * sel_ip;
+				PRINT_TEXT1(x_shift, 4, "vvv");
 
-            // Print message
-            PRINT_TEXT1(24, 1, "-- CAFIINE --");
-            PRINT_TEXT2(0, 5, "%s : %3d.%3d.%3d.%3d", "1. Server IP", ip.digit[0], ip.digit[1], ip.digit[2], ip.digit[3]);
-            PRINT_TEXT1(0, 6, "2. Press A to install cafiine");
-            PRINT_TEXT1(42, 17, "home button to exit ...");
-            
-            // Print ip digit selector
-            uint8_t x_shift = 15 + 4 * sel_ip;
-            PRINT_TEXT1(x_shift, 4, "vvv");
+				// Print coffee
+				PRINT_TEXT1(0, 11, "    )))");
+				PRINT_TEXT1(0, 12, "    (((");
+				PRINT_TEXT1(0, 13, "  +-----+");
+				PRINT_TEXT1(0, 14, "  |     |]");
+				PRINT_TEXT1(0, 15, "  `-----\'");
 
-            // Print coffee
-            PRINT_TEXT1(0, 11, "    )))");
-            PRINT_TEXT1(0, 12, "    (((");
-            PRINT_TEXT1(0, 13, "  +-----+");
-            PRINT_TEXT1(0, 14, "  |     |]");
-            PRINT_TEXT1(0, 15, "  `-----\'");
+				// Read vpad
+				VPADRead(0, &vpad_data, 1, &error);
+				
+			}
+			
+			// Check for buttons
+			// see if it's held, or instantly pressed
+			pressOrHold = vpad_data.btn_hold | vpad_data.btn_trigger;
+			
+			// Home Button
+			if (pressOrHold & BUTTON_HOME)
+			{
+				_Exit();
+				break;
+			}
+				
+			// A Button
+			if (pressOrHold & BUTTON_A)
+				break;
 
-            // Read vpad
-            VPADRead(0, &vpad_data, 1, &error);
-
-            // Update screen
-            if (button_pressed)
-            {
-                OSScreenFlipBuffersEx(1);
-                OSScreenClearBufferEx(1, 0);
-            }
-            // Check for buttons
-            else
-            {
-                // Home Button
-                if (vpad_data.btn_hold & BUTTON_HOME)
-                    goto quit;
-
-                // A Button
-                if (vpad_data.btn_hold & BUTTON_A)
-                    break;
-
-                // Left/Right Buttons
-                if (vpad_data.btn_hold & BUTTON_LEFT ) sel_ip = !sel_ip ? sel_ip = 3 : --sel_ip;
-                if (vpad_data.btn_hold & BUTTON_RIGHT) sel_ip = ++sel_ip % 4;
-
-                // Up/Down Buttons
-                if (vpad_data.btn_hold & BUTTON_UP  ) ip.digit[sel_ip] = ++ip.digit[sel_ip];
-                if (vpad_data.btn_hold & BUTTON_DOWN) ip.digit[sel_ip] = --ip.digit[sel_ip];
-            }
+			// Left/Right Buttons
+			// can only be triggered
+			if (vpad_data.btn_trigger & BUTTON_LEFT)
+			{
+				if(sel_ip == 0)
+					sel_ip = 3;
+				else
+					--sel_ip;
+			}
+			
+			if (vpad_data.btn_trigger & BUTTON_RIGHT)
+			{
+				sel_ip = ((sel_ip + 1) % 4);
+			}				
+			
+			// Up / Down buttons
+			// can be triggered, OR held
+			if (pressOrHold & BUTTON_UP)
+			{
+				if(--delay <= 0) 
+				{
+					ip.digit[sel_ip]++;
+					delay = (vpad_data.btn_trigger & BUTTON_UP) ? 6 : 0;
+				}
+			}
+			
+			else if (pressOrHold & BUTTON_DOWN)
+			{
+				if(--delay <= 0) {
+					ip.digit[sel_ip]--;
+					delay = (vpad_data.btn_trigger & BUTTON_DOWN) ? 6 : 0;
+				}
+			}
+			else {
+				delay = 0;
+			}	
+		}
 
             // Button pressed ?
-            button_pressed = (vpad_data.btn_hold & BTN_PRESSED) ? 1 : 0;
-        }
+            update_screen = (pressOrHold & (BUTTON_LEFT | BUTTON_RIGHT | BUTTON_UP | BUTTON_DOWN)) ? 1 : 0;
+	
+
 
         /* ****************************************************************** */
         /*                         Cafiine installation                       */
         /* ****************************************************************** */
-        
-        /* Copy in our resident cafiine client. */
-        unsigned int len = sizeof(cafiine_text_bin);
-        unsigned char *loc = (unsigned char *)((char *)INSTALL_ADDR + ADDR_ADD);
-        
-        while (len--) {
-            loc[len] = cafiine_text_bin[len];
-        }
+	
+		
+		/* Copy in our resident cafiine client. */
+		unsigned int len = sizeof(cafiine_text_bin);
+		unsigned char *loc = (unsigned char *)((char *)INSTALL_ADDR + ADDR_ADD);
+		
+		while (len--) {
+			loc[len] = cafiine_text_bin[len];
+		}
 
-        /* server IP address */
-        ((unsigned int *)loc)[0] = ip.full; //PC_IP;
+		/* server IP address */
+		((unsigned int *)loc)[0] = ip.full; //PC_IP;
 
-        DCFlushRange(loc, sizeof(cafiine_text_bin));
+		DCFlushRange(loc, sizeof(cafiine_text_bin));
 
-        struct magic_t {
-            void *real;
-            void *replacement;
-            void *call;
-        } *magic = (struct magic_t *)cafiine_magic_bin;
-        len = sizeof(cafiine_magic_bin) / sizeof(struct magic_t);
-        
-        int *space = (int *)(loc + sizeof(cafiine_text_bin));
-        /* Patch branches to it. */
-        while (len--) {
-            *(int *)(ADDR_ADD + (int)magic[len].call) = (int)space - ADDR_ADD;
+		struct magic_t {
+			void *real;
+			void *replacement;
+			void *call;
+		} *magic = (struct magic_t *)cafiine_magic_bin;
+		len = sizeof(cafiine_magic_bin) / sizeof(struct magic_t);
+		
+		int *space = (int *)(loc + sizeof(cafiine_text_bin));
+		/* Patch branches to it. */
+		while (len--) {
+			*(int *)(ADDR_ADD + (int)magic[len].call) = (int)space - ADDR_ADD;
 
-            *space = *(int *)(ADDR_ADD + (int)magic[len].real);
-            space++;
+			*space = *(int *)(ADDR_ADD + (int)magic[len].real);
+			space++;
 
-            *space = 0x48000002 | (((int)magic[len].real + 4) & 0x03fffffc);
-            space++;
-            DCFlushRange(space - 2, 8);
-            
-            *(int *)(ADDR_ADD + (int)magic[len].real) = 0x48000002 | ((int)magic[len].replacement & 0x03fffffc);
-            DCFlushRange((int *)(ADDR_ADD + (int)magic[len].real), 4);
-        }
+			*space = 0x48000002 | (((int)magic[len].real + 4) & 0x03fffffc);
+			space++;
+			DCFlushRange(space - 2, 8);
+			
+			*(int *)(ADDR_ADD + (int)magic[len].real) = 0x48000002 | ((int)magic[len].replacement & 0x03fffffc);
+			DCFlushRange((int *)(ADDR_ADD + (int)magic[len].real), 4);
+		}
 
 		/* Get the socket function to patch */
 		unsigned int *topatch;
@@ -317,14 +357,13 @@ void _start() {
 		DCFlushRange(faddr, 0x40);
 		ICInvalidateRange(faddr, 0x40);
 
-        /* The fix for Splatoon and such */
-        kern_write((void*)(KERN_ADDRESS_TBL + (0x12 * 4)), 0x00000000);
-        kern_write((void*)(KERN_ADDRESS_TBL + (0x13 * 4)), 0x14000000);     
+		/* The fix for Splatoon and such */
+		kern_write((void*)(KERN_ADDRESS_TBL + (0x12 * 4)), 0x00000000);
+		kern_write((void*)(KERN_ADDRESS_TBL + (0x13 * 4)), 0x14000000);  
+	}
+		_Exit();
     }
-
-quit:
-    _Exit();
-}
+ 
 
 /* Write a 32-bit word with kernel permissions */
 void kern_write(void *addr, uint32_t value)
